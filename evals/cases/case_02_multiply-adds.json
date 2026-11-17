@@ -1,0 +1,8 @@
+{
+  "slug": "multiply-adds",
+  "description": "multiply(a, b) suma en vez de multiplicar",
+  "issue_text": "multiply(3, 4) returns 7 instead of 12.",
+  "fixture_dir": "case_02",
+  "test_file": "test_calc.py",
+  "expected_passed": true
+}

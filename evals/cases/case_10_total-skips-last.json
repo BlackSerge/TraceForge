@@ -1,0 +1,8 @@
+{
+  "slug": "total-skips-last",
+  "description": "total(items) omite el ultimo elemento",
+  "issue_text": "total([1, 2, 3]) returns 3 instead of 6.",
+  "fixture_dir": "case_10",
+  "test_file": "test_lists.py",
+  "expected_passed": true
+}

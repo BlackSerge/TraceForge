@@ -1,0 +1,8 @@
+{
+  "slug": "largest-returns-min",
+  "description": "largest(items) devuelve el minimo",
+  "issue_text": "largest([3, 9, 2]) returns 2 instead of 9.",
+  "fixture_dir": "case_06",
+  "test_file": "test_stats.py",
+  "expected_passed": true
+}

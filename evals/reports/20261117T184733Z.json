@@ -1,0 +1,26 @@
+{
+  "eval_run_id": "bd88f9fa-417f-4106-8ade-21bb9bd293b6",
+  "model": "gemini-3.1-flash-lite",
+  "git_sha": "b23406d-dirty",
+  "summary": {
+    "total_cases": 1,
+    "passed": 1,
+    "failed": 0,
+    "success_rate": 1.0,
+    "avg_steps": 5.0,
+    "latency_ms_p50": 18611,
+    "latency_ms_p95": 18611,
+    "cost_usd_per_task": null
+  },
+  "cases": [
+    {
+      "slug": "add-subtracts",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 18611,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "ac70c1fb-2468-405d-bcad-6b304070c71d"
+    }
+  ]
+}

@@ -61,7 +61,7 @@ class EvalResult(Base):
     passed: Mapped[bool] = mapped_column(Boolean)
     steps: Mapped[int] = mapped_column(Integer)
     latency_ms: Mapped[int] = mapped_column(Integer)
-    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     failure_reason: Mapped[str | None] = mapped_column(Text)
 
     eval_run: Mapped["EvalRun"] = relationship(back_populates="results")

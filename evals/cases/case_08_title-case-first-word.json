@@ -1,0 +1,8 @@
+{
+  "slug": "title-case-first-word",
+  "description": "title_case solo capitaliza la primera palabra",
+  "issue_text": "title_case('hello big world') returns 'Hello big world' instead of 'Hello Big World'.",
+  "fixture_dir": "case_08",
+  "test_file": "test_text.py",
+  "expected_passed": true
+}

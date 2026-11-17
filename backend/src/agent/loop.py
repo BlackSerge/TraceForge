@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,11 +25,17 @@ SYSTEM_PROMPT = (
     "Stop calling tools once the tests pass."
 )
 
-# Issue fetching is not implemented yet: the task text is fixed for the fixture repo.
-TASK_TEMPLATE = (
-    "Issue: {issue_url}\n"
-    "Description: the function add(a, b) in sample.py returns the wrong result. Fix it."
-)
+# Issue fetching is not implemented yet: the issue text is passed in (or defaulted).
+DEFAULT_ISSUE_TEXT = "the function add(a, b) in sample.py returns the wrong result. Fix it."
+TASK_TEMPLATE = "Issue: {issue_url}\nDescription: {issue_text}\nRepository files:\n{files}"
+
+
+@dataclass
+class AgentResult:
+    run_id: uuid.UUID
+    passed: bool  # the agent's own view: its last run_tests passed
+    steps: int
+    error: str | None = None  # set when the LLM call failed (e.g. 429/503 after retries)
 
 TOOLS = [
     {
@@ -96,20 +103,35 @@ async def _execute(name: str, args: dict) -> dict:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-async def run_agent(issue_url: str, session: AsyncSession) -> uuid.UUID:
-    run = AgentRun(issue_url=issue_url, status=RunStatus.RUNNING)
+async def run_agent(
+    issue_url: str,
+    session: AsyncSession,
+    *,
+    issue_text: str | None = None,
+    eval_run_id: uuid.UUID | None = None,
+) -> AgentResult:
+    run = AgentRun(issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id)
     session.add(run)
     await session.commit()
 
     client = get_llm_client()
     messages: list[dict] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": TASK_TEMPLATE.format(issue_url=issue_url)},
+        {
+            "role": "user",
+            "content": TASK_TEMPLATE.format(
+                issue_url=issue_url,
+                issue_text=issue_text or DEFAULT_ISSUE_TEXT,
+                files="\n".join(f"- {f}" for f in tools.list_repo_files()),
+            ),
+        },
     ]
     test_runs = 0
     passed = False
+    steps_taken = 0
 
     for step_id in range(1, MAX_STEPS + 1):
+        steps_taken = step_id
         attempt = min(test_runs + 1, MAX_TEST_RUNS)
         context_snapshot = json.loads(json.dumps(messages))  # real context sent to the LLM
         step_tools = [TOOLS[0]] if step_id == 1 else TOOLS  # step 1: read-only
@@ -132,7 +154,7 @@ async def run_agent(issue_url: str, session: AsyncSession) -> uuid.UUID:
             run.status = RunStatus.FAILED
             run.finished_at = datetime.now(timezone.utc)
             await session.commit()
-            raise
+            return AgentResult(run.id, False, step_id, error=f"{type(exc).__name__}: {exc}")
 
         calls = reply["tool_calls"]
         messages.append(
@@ -216,4 +238,4 @@ async def run_agent(issue_url: str, session: AsyncSession) -> uuid.UUID:
     run.status = RunStatus.AWAITING_APPROVAL if passed else RunStatus.FAILED
     run.finished_at = datetime.now(timezone.utc)
     await session.commit()
-    return run.id
+    return AgentResult(run.id, passed, steps_taken)

@@ -1,0 +1,152 @@
+{
+  "eval_run_id": "49fdecfe-2186-4d83-8da0-a6465c3125fa",
+  "model": "gemini-3.1-flash-lite",
+  "git_sha": "b23406d-dirty",
+  "summary": {
+    "total_cases": 15,
+    "passed": 14,
+    "failed": 1,
+    "success_rate": 0.9333,
+    "avg_steps": 4.73,
+    "latency_ms_p50": 31852,
+    "latency_ms_p95": 247065,
+    "cost_usd_per_task": null
+  },
+  "cases": [
+    {
+      "slug": "add-subtracts",
+      "passed": true,
+      "steps": 4,
+      "latency_ms": 14328,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "a82d0a29-d342-42fe-b701-7fdb719a2a8f"
+    },
+    {
+      "slug": "multiply-adds",
+      "passed": true,
+      "steps": 4,
+      "latency_ms": 19905,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "30e4a16d-5f21-425a-84ea-75262c963e79"
+    },
+    {
+      "slug": "divide-floors",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 37586,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "40097428-8a3c-411c-bdb1-ccf994c76dc1"
+    },
+    {
+      "slug": "subtract-reversed",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 30999,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "8c02f4de-79a9-4ac8-9c5c-e142ffffbe9c"
+    },
+    {
+      "slug": "is-adult-off-by-one",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 31613,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "989c15cc-d520-490d-81a6-af3b949678d4"
+    },
+    {
+      "slug": "largest-returns-min",
+      "passed": true,
+      "steps": 4,
+      "latency_ms": 41455,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "31f9c664-ca66-43d3-9013-edbd52ab93fd"
+    },
+    {
+      "slug": "reverse-noop",
+      "passed": false,
+      "steps": 1,
+      "latency_ms": 601614,
+      "cost_usd": null,
+      "failure_reason": "agent error: APITimeoutError: Request timed out.",
+      "agent_run_id": "9b612366-cef6-42f2-903c-90308bc73c06"
+    },
+    {
+      "slug": "title-case-first-word",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 13049,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "d3bd442a-37c7-43c1-b164-0ffe9cfdddaf"
+    },
+    {
+      "slug": "count-vowels-case",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 39617,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "13dffa47-f745-485d-953a-63ed55db40ad"
+    },
+    {
+      "slug": "total-skips-last",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 20013,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "dba52aa6-062f-4df3-ba2c-5d3968624157"
+    },
+    {
+      "slug": "unique-loses-order",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 62852,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "1ea437ca-870f-4e18-8177-8738b4574e60"
+    },
+    {
+      "slug": "flatten-one-level",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 26154,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "3247a430-1d0b-41a4-81ba-5bbbf78c8406"
+    },
+    {
+      "slug": "word-count-overwrites",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 31852,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "b3fa382e-3bb2-4b91-bd4f-839f2d8e1fb4"
+    },
+    {
+      "slug": "average-empty-list",
+      "passed": true,
+      "steps": 5,
+      "latency_ms": 34971,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "351810dc-98df-481f-afbc-142857fedfe9"
+    },
+    {
+      "slug": "summarize-wrong-mean",
+      "passed": true,
+      "steps": 8,
+      "latency_ms": 95115,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "b4345bb7-d8cc-43c4-ba7d-13603e4ec477"
+    }
+  ]
+}

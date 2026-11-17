@@ -12,5 +12,7 @@ class Settings(BaseSettings):
     llm_base_url: str
     llm_model: str
 
+    eval_sleep_between_cases_s: float = 5.0
+
 
 settings = Settings()

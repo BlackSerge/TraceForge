@@ -1,0 +1,8 @@
+{
+  "slug": "add-subtracts",
+  "description": "add(a, b) resta en vez de sumar",
+  "issue_text": "add(2, 3) returns -1 instead of 5.",
+  "fixture_dir": "case_01",
+  "test_file": "test_calc.py",
+  "expected_passed": true
+}

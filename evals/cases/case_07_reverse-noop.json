@@ -1,0 +1,8 @@
+{
+  "slug": "reverse-noop",
+  "description": "reverse(s) devuelve la cadena sin invertir",
+  "issue_text": "reverse('abc') returns 'abc' instead of 'cba'.",
+  "fixture_dir": "case_07",
+  "test_file": "test_text.py",
+  "expected_passed": true
+}

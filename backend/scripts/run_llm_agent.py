@@ -10,8 +10,10 @@ from src.db.session import SessionLocal, engine  # noqa: E402
 
 async def main() -> None:
     async with SessionLocal() as session:
-        run_id = await run_agent("https://github.com/example/repo/issues/1", session)
-    print(run_id)
+        result = await run_agent("https://github.com/example/repo/issues/1", session)
+    print(result.run_id)
+    if result.error:
+        print(f"LLM error: {result.error}")
     await engine.dispose()
 
 
