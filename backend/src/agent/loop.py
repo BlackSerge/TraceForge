@@ -14,11 +14,14 @@ MAX_STEPS = 15
 MAX_TEST_RUNS = 3
 
 SYSTEM_PROMPT = (
-    "You are a coding agent that fixes bugs in a small repository. "
-    "Work with the tools: read_file to read a file, propose_patch to propose the full new "
-    "content of a file, and run_tests to run the test suite. "
-    "Read the relevant file first, then propose a patch, then run the tests. "
-    "If the tests fail, adjust your patch and try again. Stop calling tools once the tests pass."
+    "You are a coding agent. Your goal is to make the repository's tests pass. "
+    "Tools: read_file inspects a file; propose_patch REALLY modifies the file on disk with the "
+    "full new content you give it; run_tests runs the real test suite and reports its output. "
+    "In the first step you can only read (read_file); after that you can also propose patches "
+    "and run tests. Workflow: read the relevant files, propose a patch with propose_patch, then "
+    "run the tests with run_tests. If the tests fail, read the test output, correct your patch "
+    "and run the tests again. Every tool call requires a brief 'reasoning' argument justifying it. "
+    "Stop calling tools once the tests pass."
 )
 
 # Issue fetching is not implemented yet: the task text is fixed for the fixture repo.
@@ -35,8 +38,11 @@ TOOLS = [
             "description": "Read a file from the repository.",
             "parameters": {
                 "type": "object",
-                "properties": {"path": {"type": "string", "description": "Path relative to the repo root."}},
-                "required": ["path"],
+                "properties": {
+                    "path": {"type": "string", "description": "Path relative to the repo root."},
+                    "reasoning": {"type": "string", "description": "Brief justification for this tool call"},
+                },
+                "required": ["path", "reasoning"],
             },
         },
     },
@@ -50,8 +56,9 @@ TOOLS = [
                 "properties": {
                     "file": {"type": "string", "description": "Path relative to the repo root."},
                     "new_content": {"type": "string", "description": "Full new content of the file."},
+                    "reasoning": {"type": "string", "description": "Brief justification for this tool call"},
                 },
-                "required": ["file", "new_content"],
+                "required": ["file", "new_content", "reasoning"],
             },
         },
     },
@@ -60,7 +67,13 @@ TOOLS = [
         "function": {
             "name": "run_tests",
             "description": "Run the test suite and return whether it passed.",
-            "parameters": {"type": "object", "properties": {}},
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reasoning": {"type": "string", "description": "Brief justification for this tool call"},
+                },
+                "required": ["reasoning"],
+            },
         },
     },
 ]
@@ -76,6 +89,7 @@ async def _execute(name: str, args: dict) -> dict:
     func = TOOL_FUNCS.get(name)
     if func is None:
         return {"error": f"unknown tool: {name}"}
+    args = {k: v for k, v in args.items() if k != "reasoning"}
     try:
         return await func(**args)
     except Exception as exc:  # tool failures are data for the model, not crashes
@@ -98,15 +112,16 @@ async def run_agent(issue_url: str, session: AsyncSession) -> uuid.UUID:
     for step_id in range(1, MAX_STEPS + 1):
         attempt = min(test_runs + 1, MAX_TEST_RUNS)
         context_snapshot = json.loads(json.dumps(messages))  # real context sent to the LLM
+        step_tools = [TOOLS[0]] if step_id == 1 else TOOLS  # step 1: read-only
         started = time.perf_counter()
         try:
-            reply = await client.chat(messages, TOOLS)
+            reply = await client.chat(messages, step_tools)
         except Exception as exc:
             session.add(
                 TraceStep(
                     run_id=run.id,
                     step_id=step_id,
-                    input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in TOOLS]},
+                    input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in step_tools]},
                     tool_calls=[],
                     reasoning_summary=f"LLM call failed: {type(exc).__name__}: {exc}",
                     outcome=StepOutcome.ERROR,
@@ -181,9 +196,9 @@ async def run_agent(issue_url: str, session: AsyncSession) -> uuid.UUID:
             TraceStep(
                 run_id=run.id,
                 step_id=step_id,
-                input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in TOOLS]},
+                input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in step_tools]},
                 tool_calls=recorded_calls,
-                reasoning_summary=reply["content"] or "",
+                reasoning_summary=(calls[0]["arguments"].get("reasoning") or "") if calls else (reply["content"] or ""),
                 outcome=outcome,
                 attempt=attempt,
                 latency_ms=int((time.perf_counter() - started) * 1000),
