@@ -11,6 +11,18 @@ from src.agent.llm.factory import get_llm_client
 from src.models.run import AgentRun, RunStatus
 from src.models.trace import StepOutcome, TraceStep
 
+SUSPICIOUS_PATTERNS = [
+    "ignore previous instructions", "ignore all previous", "rm -rf", "curl ", "wget ",
+    "system(", "subprocess", "os.system", "eval(",
+]
+
+
+def scan_issue(issue_text: str) -> list[str]:
+    """Audit only (never blocks): suspicious patterns found in the issue text."""
+    lowered = issue_text.lower()
+    return [p for p in SUSPICIOUS_PATTERNS if p in lowered]
+
+
 MAX_STEPS = 15
 MAX_TEST_RUNS = 3
 READ_ONLY_TOOLS = {"read_file", "list_files"}  # the only tools offered in step 1
@@ -31,6 +43,14 @@ SYSTEM_PROMPT = (
 # Issue fetching is not implemented yet: the issue text is passed in (or defaulted).
 DEFAULT_ISSUE_TEXT = "the function add(a, b) in sample.py returns the wrong result. Fix it."
 TASK_TEMPLATE = "Issue: {issue_url}\nDescription: {issue_text}\nRepository files:\n{files}"
+
+
+def _input_context(messages: list, step_tools: list, step_id: int, suspicious: list[str]) -> dict:
+    ctx = {"messages": messages, "tools": [t["function"]["name"] for t in step_tools]}
+    if step_id == 1 and suspicious:
+        ctx["suspicious_issue"] = True
+        ctx["suspicious_patterns"] = suspicious
+    return ctx
 
 
 @dataclass
@@ -149,6 +169,7 @@ async def run_agent(
             ),
         },
     ]
+    suspicious = scan_issue(issue_text or DEFAULT_ISSUE_TEXT)
     test_runs = 0
     passed = False
     steps_taken = 0
@@ -166,7 +187,7 @@ async def run_agent(
                 TraceStep(
                     run_id=run.id,
                     step_id=step_id,
-                    input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in step_tools]},
+                    input_context=_input_context(context_snapshot, step_tools, step_id, suspicious),
                     tool_calls=[],
                     reasoning_summary=f"LLM call failed: {type(exc).__name__}: {exc}",
                     outcome=StepOutcome.ERROR,
@@ -214,7 +235,10 @@ async def run_agent(
                     test_runs += 1
                     step_tests_passed = step_tests_passed or bool(result.get("passed"))
             had_error = had_error or "error" in result
-            recorded_calls.append({"name": call["name"], "args": call["arguments"], "result": result})
+            record = {"name": call["name"], "args": call["arguments"], "result": result}
+            if call["name"] == "run_tests" and tools.LAST_SANDBOX:
+                record["sandbox"] = dict(tools.LAST_SANDBOX)
+            recorded_calls.append(record)
             messages.append(
                 {
                     "role": "tool",
@@ -241,7 +265,7 @@ async def run_agent(
             TraceStep(
                 run_id=run.id,
                 step_id=step_id,
-                input_context={"messages": context_snapshot, "tools": [t["function"]["name"] for t in step_tools]},
+                input_context=_input_context(context_snapshot, step_tools, step_id, suspicious),
                 tool_calls=recorded_calls,
                 reasoning_summary=(calls[0]["arguments"].get("reasoning") or "") if calls else (reply["content"] or ""),
                 outcome=outcome,

@@ -48,7 +48,7 @@ There is no frontend test script and no backend test command.
 1. El Agente nunca hace merge. Siempre se detiene y espera aprobación humana.
 2. Cada decisión persiste una traza con: `step_id`, `timestamp`, `agent_role`, `input_context` (contexto real, no solo prompt final), `tool_calls`, `reasoning_summary`, `outcome`.
 3. `evals/` con al menos 15 casos ejecutables. `make eval` corre todos y genera informe con tasa de éxito, pasos, latencia p50/p95, costo por tarea.
-4. Hito 3 (límites de permisos) y hito 4 (multi-rol) NO se implementan en v1. Solo dejar interfaces preparadas (`agent_role` existe, pero un solo rol).
+4. Hito 3 (sandbox Docker, límites de permisos y auditoría de prompt injection) está **implementado en v1.00**. Hito 4 (multi-rol: Triage / Developer / Reviewer) **también forma parte de la v1.00** y está pendiente; hasta entonces `agent_role` existe pero hay un solo rol. La v1.00 no se considera terminada hasta que ambos hitos estén completos.
 5. Priorizar observabilidad y medición sobre "inteligencia". Agente simple con buenas trazas > Agente complejo sin métricas.
 
 **Flujo v1:** issue URL → tarea en Redis → Agente cicla (read_file → propose_patch → run_tests, máx 3 reintentos) → se detiene → PR en borrador → humano aprueba/rechaza.
@@ -59,4 +59,15 @@ There is no frontend test script and no backend test command.
 - Trabaja por hitos pequeños y verificables. No construyas todo de una vez.
 - Antes de escribir código, propón el esquema de datos y espera mi confirmación.
 - Cada herramienta nueva del Agente debe venir con al menos un caso de evaluación.
-- No implementes hitos 3 y 4.
+- Hito 3 (sandbox) ya está implementado. El hito 4 (multi-rol) se implementa antes de cerrar la v1.00; no lo adelantes sin que se pida el hito.
+
+## Estado de hitos (v1.00)
+- **Hito 3 — implementado:** `run_tests` corre en un contenedor Docker efímero (`--network=none`, 512 MB, 1 CPU, usuario no-root, repo montado solo lectura, timeout 60 s; imagen en `backend/sandbox/`, `make sandbox-image`); `propose_patch` solo escribe dentro de la copia temporal del fixture; el `TraceStep` registra el contenedor usado; `run_agent` audita el issue (`suspicious_issue` en `input_context`) sin bloquear.
+- **Hito 4 — pendiente (parte de v1.00):** roles Triage / Developer / Reviewer sobre el `agent_role` ya existente.
+
+## Definition of Done v1.00
+- [x] Sandbox funcional (hito 3).
+- [ ] Multi-rol funcional (hito 4).
+- [ ] Evals pasando (`make eval`, ≥15 casos; hoy 16/16 con un solo rol; debe repetirse con multi-rol).
+- [x] UI de aprobación (bandeja de runs con timeline, approve/reject).
+- [ ] README final.
