@@ -41,6 +41,7 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     total_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
 
     steps: Mapped[list["TraceStep"]] = relationship(
         back_populates="run", order_by="TraceStep.step_id", cascade="all, delete-orphan"

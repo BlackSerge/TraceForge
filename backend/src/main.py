@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.routers import evals, traces
+from src.routers import agent, evals, traces
 
 app = FastAPI(title="DevPilot Agent", version="0.1.0")
 
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(agent.router)
 app.include_router(traces.router)
 app.include_router(evals.router)
 
