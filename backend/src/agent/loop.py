@@ -13,13 +13,16 @@ from src.models.trace import StepOutcome, TraceStep
 
 MAX_STEPS = 15
 MAX_TEST_RUNS = 3
+READ_ONLY_TOOLS = {"read_file", "list_files"}  # the only tools offered in step 1
 
 SYSTEM_PROMPT = (
     "You are a coding agent. Your goal is to make the repository's tests pass. "
-    "Tools: read_file inspects a file; propose_patch REALLY modifies the file on disk with the "
+    "Tools: list_files lists a directory of the repository to explore it (use it when you do not "
+    "know which file is relevant); read_file inspects a file; propose_patch REALLY modifies the file on disk with the "
     "full new content you give it; run_tests runs the real test suite and reports its output. "
-    "In the first step you can only read (read_file); after that you can also propose patches "
-    "and run tests. Workflow: read the relevant files, propose a patch with propose_patch, then "
+    "In the first step you can only read and list (read_file, list_files): you cannot propose "
+    "patches or run tests yet; from the second step on you can also use propose_patch and "
+    "run_tests. Workflow: explore with list_files if needed, read the relevant files, propose a patch with propose_patch, then "
     "run the tests with run_tests. If the tests fail, read the test output, correct your patch "
     "and run the tests again. Every tool call requires a brief 'reasoning' argument justifying it. "
     "Stop calling tools once the tests pass."
@@ -38,6 +41,25 @@ class AgentResult:
     error: str | None = None  # set when the LLM call failed (e.g. 429/503 after retries)
 
 TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List the entries (files and directories) of a directory in the repository.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory relative to the repo root. Defaults to '.'.",
+                        "default": ".",
+                    },
+                    "reasoning": {"type": "string", "description": "Brief justification for this tool call"},
+                },
+                "required": ["reasoning"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -86,6 +108,7 @@ TOOLS = [
 ]
 
 TOOL_FUNCS = {
+    "list_files": tools.list_files,
     "read_file": tools.read_file,
     "propose_patch": tools.propose_patch,
     "run_tests": tools.run_tests,
@@ -134,7 +157,7 @@ async def run_agent(
         steps_taken = step_id
         attempt = min(test_runs + 1, MAX_TEST_RUNS)
         context_snapshot = json.loads(json.dumps(messages))  # real context sent to the LLM
-        step_tools = [TOOLS[0]] if step_id == 1 else TOOLS  # step 1: read-only
+        step_tools = [t for t in TOOLS if t["function"]["name"] in READ_ONLY_TOOLS] if step_id == 1 else TOOLS
         started = time.perf_counter()
         try:
             reply = await client.chat(messages, step_tools)

@@ -58,7 +58,11 @@ async def upsert_case(session, case: dict) -> EvalCase:
         "repo_url": f"file://evals/fixtures/{case['fixture_dir']}",
         "issue_url": f"https://example.com/issues/{case['slug']}",
         "issue_text": case["issue_text"],
-        "expected": {"test_file": case["test_file"], "expected_passed": case["expected_passed"]},
+        "expected": {
+            "test_file": case["test_file"],
+            "expected_passed": case["expected_passed"],
+            **({"tool_tag": case["tool_tag"]} if case.get("tool_tag") else {}),
+        },
     }
     if existing is None:
         existing = EvalCase(slug=case["slug"], **fields)

@@ -1,0 +1,161 @@
+{
+  "eval_run_id": "9ee48b08-5798-40f6-8250-db0761f687af",
+  "model": "gemini-3.1-flash-lite",
+  "git_sha": "e1f53e8-dirty",
+  "summary": {
+    "total_cases": 16,
+    "passed": 16,
+    "failed": 0,
+    "success_rate": 1.0,
+    "avg_steps": 6.38,
+    "latency_ms_p50": 16086,
+    "latency_ms_p95": 44351,
+    "cost_usd_per_task": null
+  },
+  "cases": [
+    {
+      "slug": "add-subtracts",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 9414,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "eaff0b08-d365-418c-99e0-5b556a9b51c2"
+    },
+    {
+      "slug": "multiply-adds",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 10878,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "65983261-3b97-464b-817e-083a01771314"
+    },
+    {
+      "slug": "divide-floors",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 41897,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "3910f6eb-29a6-461e-b04c-ad9742200afb"
+    },
+    {
+      "slug": "subtract-reversed",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 8466,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "228ad165-aa55-4066-8225-2e4dcba2cc2b"
+    },
+    {
+      "slug": "is-adult-off-by-one",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 9123,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "4c90e59f-8d0e-41fe-bc1b-981a05b49044"
+    },
+    {
+      "slug": "largest-returns-min",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 26914,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "8f101331-7827-4d7e-9126-f3032db20ca7"
+    },
+    {
+      "slug": "reverse-noop",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 10539,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "e159ecef-f291-4c5f-9259-39b837f0c923"
+    },
+    {
+      "slug": "title-case-first-word",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 18912,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "b8443d9a-0656-409b-bcf0-a2a2b1d1c2af"
+    },
+    {
+      "slug": "count-vowels-case",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 18128,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "72201230-b19b-4258-ba2a-5f398f853fba"
+    },
+    {
+      "slug": "total-skips-last",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 10378,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "938523fa-ca03-4567-adb0-c571d5683e35"
+    },
+    {
+      "slug": "unique-loses-order",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 14044,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "f7397959-87a3-4f44-94ff-637088915e78"
+    },
+    {
+      "slug": "flatten-one-level",
+      "passed": true,
+      "steps": 8,
+      "latency_ms": 19495,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "893b7e95-8544-40aa-be2f-27b8d427d031"
+    },
+    {
+      "slug": "word-count-overwrites",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 9761,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "a1d227f6-f49f-46a8-b6c5-9ceed7bc25c1"
+    },
+    {
+      "slug": "average-empty-list",
+      "passed": true,
+      "steps": 6,
+      "latency_ms": 51713,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "8a7421e7-38b1-49dc-9e75-17bd4588a0ad"
+    },
+    {
+      "slug": "summarize-wrong-mean",
+      "passed": true,
+      "steps": 9,
+      "latency_ms": 37693,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "d9408223-cf87-4d24-93cc-65e4a365762c"
+    },
+    {
+      "slug": "list-files",
+      "passed": true,
+      "steps": 7,
+      "latency_ms": 20449,
+      "cost_usd": null,
+      "failure_reason": null,
+      "agent_run_id": "7ec9d187-aff5-473e-9fa4-4a3431fcb211"
+    }
+  ]
+}

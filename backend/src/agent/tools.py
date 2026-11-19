@@ -28,6 +28,20 @@ async def read_file(path: str) -> dict:
     return {"path": path, "content": target.read_text()}
 
 
+async def list_files(path: str = ".") -> dict:
+    """List a directory inside FIXTURE_REPO: directories first, then files, alphabetically."""
+    root = FIXTURE_REPO.resolve()
+    target = (root / path).resolve()
+    if not target.is_relative_to(root) or not target.is_dir():
+        return {"error": "not found"}
+    children = [c for c in target.iterdir() if c.name != "__pycache__" and c.suffix != ".pyc"]
+    children.sort(key=lambda c: (c.is_file(), c.name))
+    return {
+        "path": path,
+        "entries": [{"name": c.name, "type": "dir" if c.is_dir() else "file"} for c in children],
+    }
+
+
 async def propose_patch(file: str, new_content: str) -> dict:
     """Write new_content to the file (inside the fixture repo) and return the unified diff."""
     target = (FIXTURE_REPO / file).resolve()
