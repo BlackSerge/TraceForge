@@ -1,20 +1,30 @@
 # AGENTS.md
 
-DevPilot Agent is an early-stage two-part app: a FastAPI backend and a Vite/React SPA. There is no root README, CI, formatter, typechecker, or backend dependency manifest yet — don't go looking for them.
+DevPilot Agent (UI branded TraceForge) is a two-part app: a FastAPI backend (agent, traces, evals) and a Vite/React SPA (approval inbox).
 
 ## Layout
 
-- `backend/src/main.py` — the entire backend today: one `app`, `/health` endpoint, CORS middleware.
-- `backend/tests/` — empty (`__init__.py` only); no test runner is installed or configured.
-- `frontend/` — Vite + React 19 in plain JavaScript/JSX (no TypeScript).
+- `backend/src/main.py` — FastAPI `app`, `/health`, CORS middleware, and the `agent`, `traces`, `evals` routers (`backend/src/routers/`).
+- `backend/src/agent/` — agent loop (`loop.py`), tools (`tools.py`), and the LLM abstraction (`llm/`).
+- `backend/src/{models,schemas,db}/`, `backend/migrations/` (Alembic), `backend/sandbox/` (Dockerfile for the test sandbox), `backend/scripts/` (runners).
+- `backend/tests/` — only `__init__.py` and `fixtures/repo/{sample.py,test_sample.py}`, the default fixture repo for the agent. No pytest suite for the backend itself.
+- `evals/` — `cases/` (16 JSON cases), `fixtures/case_XX/`, `reports/`. Run with `make eval`.
+- `frontend/` — Vite + React 19 in plain JavaScript/JSX (no TypeScript): the TraceForge approval inbox.
 
 ## Commands
 
-Backend (run from `backend/`; the only environment is the repo-root `.venv`, Python 3.14):
+Backend (run from `backend/`; the only environment is the repo-root `.venv`, using the Python of that venv):
 
 ```bash
 cd backend && ../.venv/bin/uvicorn src.main:app --reload   # http://127.0.0.1:8000
 curl http://127.0.0.1:8000/health
+```
+
+Evals and sandbox (from the repo root; need Postgres/Redis up, e.g. `podman start devpilot-postgres devpilot-redis`, and a Docker daemon):
+
+```bash
+make sandbox-image   # builds devpilot-sandbox:latest used by run_tests
+make eval            # runs all evals/cases, writes evals/reports/<timestamp>.json
 ```
 
 Frontend (pnpm; `pnpm-lock.yaml` is authoritative):
@@ -26,17 +36,16 @@ pnpm build
 pnpm lint     # eslint . (JS/JSX only)
 ```
 
-There is no frontend test script and no backend test command.
+There is no frontend test script. The backend has no pytest suite of its own: pytest only runs inside the sandbox container against fixture repos (`run_tests`, `make eval`).
 
 ## Gotchas
 
-- Backend dependencies are undeclared. `.venv` also has SQLAlchemy, Alembic, asyncpg, redis, and pydantic-settings installed, but no code uses them. Don't assume database, models, migrations, or Redis wiring exists; create a manifest if you add dependencies.
-- CORS in `backend/src/main.py` allows only `http://localhost:5173` and `http://127.0.0.1:5173`. `frontend/src/App.jsx` hardcodes `http://127.0.0.1:8000/health`. Changing either port or origin requires updating both files.
-- `backend/` is not a package (no `__init__.py`). Import as `src.main` when working from `backend/`, or `backend.src.main` from the repo root; prefer running uvicorn from `backend/`.
-- The frontend has no API client or env-based config — fetches are written inline in components.
+- Backend dependencies are pinned in `backend/requirements.txt`; add new ones there. Config comes from `backend/.env` via pydantic-settings (never commit it, see Security).
+- CORS in `backend/src/main.py` allows only `http://localhost:5173` and `http://127.0.0.1:5173`. `frontend/src/api.js` hardcodes `http://127.0.0.1:8000`. Changing either port or origin requires updating both files.
+- `backend/` is not a package (no `__init__.py`). Import as `src.*` when working from `backend/` (scripts need `PYTHONPATH=.`); prefer running from `backend/`.
+- The frontend has no env-based config; all HTTP calls live in `frontend/src/api.js`.
+- There is no root README, CI, formatter, or typechecker yet. The README is part of the Definition of Done v1.00 (written after hito 4).
 - Git history follows Conventional Commits with `backend`/`frontend` scopes, e.g. `feat(frontend): ...`.
-
-
 
 ## Restricciones del proyecto (no negociables)
 
@@ -53,7 +62,7 @@ There is no frontend test script and no backend test command.
 
 **Flujo v1:** issue URL → tarea en Redis → Agente cicla (read_file → propose_patch → run_tests, máx 3 reintentos) → se detiene → PR en borrador → humano aprueba/rechaza.
 
-**Primer hito (lo que toca ahora):** modelos SQLAlchemy para `trace` y `eval`, esquema de base de datos, routers FastAPI vacíos. Sin lógica de Agente todavía.
+**Estado actual:** v1.00 en progreso. Hito 3 (sandbox) implementado. Hito 4 (multi-rol) pendiente. Ver "Definition of Done v1.00".
 
 ## Instrucciones para OpenCode
 - Trabaja por hitos pequeños y verificables. No construyas todo de una vez.
@@ -71,3 +80,10 @@ There is no frontend test script and no backend test command.
 - [ ] Evals pasando (`make eval`, ≥15 casos; hoy 16/16 con un solo rol; debe repetirse con multi-rol).
 - [x] UI de aprobación (bandeja de runs con timeline, approve/reject).
 - [ ] README final.
+
+## Security
+- `backend/.env` está en `.gitignore` y nunca ha sido trackeado (auditado sobre todo el historial). Contiene `LLM_API_KEY`; no se commitea ni se imprime.
+- `CLAUDE.md` está en `.gitignore` (es para Claude Code, no para el repo).
+- El sandbox de `run_tests` corre con `--network=none`, `--read-only`, usuario no-root y timeout de 60 s (además de 512 MB, 1 CPU, `--cap-drop=ALL`, repo montado solo lectura).
+- `propose_patch` solo escribe dentro de la copia temporal del fixture (path traversal, rutas absolutas y symlinks fuera de la copia bloqueados).
+- La auditoría de prompt injection registra `suspicious_issue` en el `input_context` del primer `TraceStep`, pero no bloquea: es auditoría, no filtro.
