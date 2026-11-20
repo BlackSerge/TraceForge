@@ -20,6 +20,8 @@ cd backend && ../.venv/bin/uvicorn src.main:app --reload   # http://127.0.0.1:80
 curl http://127.0.0.1:8000/health
 ```
 
+Infrastructure services (Postgres 18 on host port 5433, Redis 7 on port 6379, credentials devpilot/devpilot) are described in the root docker-compose.yml. Start them with docker compose up -d or podman compose up -d depending on your environment. During development they may already be running via Podman (podman start devpilot-postgres devpilot-redis).
+
 Evals and sandbox (from the repo root; need Postgres/Redis up, e.g. `podman start devpilot-postgres devpilot-redis`, and a Docker daemon):
 
 ```bash
