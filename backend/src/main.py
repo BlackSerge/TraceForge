@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,16 +10,14 @@ from src.db.session import SessionLocal
 from src.models.run import AgentRun, RunStatus
 from src.routers import agent, evals, traces
 
-ORPHAN_AFTER = timedelta(minutes=30)  # a run still "running" after this long lost its process
-
-
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Reaper: runs left in 'running' by a crashed process would stay there forever."""
+    """Reaper: this is the only process running agents, so at startup any pending/running run lost its
+    process. Without this it would stay in progress forever (and the UI would keep polling it)."""
     async with SessionLocal() as session:
         await session.execute(
             update(AgentRun)
-            .where(AgentRun.status == RunStatus.RUNNING, AgentRun.created_at < datetime.now(timezone.utc) - ORPHAN_AFTER)
+            .where(AgentRun.status.in_([RunStatus.PENDING, RunStatus.RUNNING]))
             .values(status=RunStatus.FAILED, finished_at=datetime.now(timezone.utc),
                     rejection_reason="Orphaned: process ended before the run finished")
         )
