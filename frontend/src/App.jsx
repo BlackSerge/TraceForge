@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Hammer } from "lucide-react";
 import RunDetail from "./components/RunDetail";
+import NewRunForm from "./components/NewRunForm";
 import RunList from "./components/RunList";
 
 function App() {
@@ -20,16 +21,25 @@ function App() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-        {view === "list" ? (
+        {view === "list" && (
           <RunList
             onSelect={(id) => {
               setSelectedRunId(id);
               setView("detail");
             }}
+            onNew={() => setView("new")}
           />
-        ) : (
-          <RunDetail runId={selectedRunId} onBack={() => setView("list")} />
         )}
+        {view === "new" && (
+          <NewRunForm
+            onBack={() => setView("list")}
+            onCreated={(id) => {
+              setSelectedRunId(id);
+              setView("detail");
+            }}
+          />
+        )}
+        {view === "detail" && <RunDetail runId={selectedRunId} onBack={() => setView("list")} />}
       </main>
     </div>
   );

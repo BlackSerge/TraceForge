@@ -21,6 +21,8 @@ function finalDiff(steps) {
   return patches.length ? patches[patches.length - 1] : null;
 }
 
+const POLL_MS = 3000;
+
 export default function RunDetail({ runId, onBack }) {
   const [version, setVersion] = useState(0);
   const [result, setResult] = useState({ key: null, run: null, error: null });
@@ -57,6 +59,14 @@ export default function RunDetail({ runId, onBack }) {
 
   const loading = result.key !== key;
   const run = result.run;
+  const inProgress = run && (run.status === "running" || run.status === "pending");
+
+  // refresh the timeline while the agent is working
+  useEffect(() => {
+    if (!inProgress) return undefined;
+    const id = setInterval(() => setVersion((v) => v + 1), POLL_MS);
+    return () => clearInterval(id);
+  }, [inProgress]);
   const patch = run ? finalDiff(run.steps) : null;
   const verdict = run ? reviewVerdict(run.steps) : null;
 
@@ -88,6 +98,17 @@ export default function RunDetail({ runId, onBack }) {
             </p>
           </div>
 
+          {run.issue_text && (
+            <div className="rounded-lg border border-ink-200 bg-white p-4 text-sm dark:border-white/10 dark:bg-ink-900">
+              <p className="mb-1 text-xs font-semibold tracking-wide text-ink-500 uppercase">Issue</p>
+              <p className="break-words whitespace-pre-wrap">{run.issue_text}</p>
+            </div>
+          )}
+          {inProgress && (
+            <p className="flex items-center gap-2 text-sm text-ink-500" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" /> The agent is working. This page refreshes automatically.
+            </p>
+          )}
           {run.rejection_reason && (
             <Callout tone="bad" icon={XCircle} title={run.status === "failed" ? "Failure reason" : "Reason for rejection"}>
               {run.rejection_reason}

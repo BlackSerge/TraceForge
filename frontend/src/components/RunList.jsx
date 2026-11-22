@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Clock, Inbox } from "lucide-react";
+import { ChevronRight, Clock, Inbox, Plus } from "lucide-react";
 import { listRuns } from "../api";
 import { formatDate } from "../format";
-import { btnGhost } from "../styles";
+import { btn, btnGhost } from "../styles";
 import { EmptyState, ErrorBanner, ListSkeleton, StatusBadge } from "./ui";
 
 const STATUSES = ["awaiting_approval", "approved", "rejected", "failed", "running", "pending"];
 
-export default function RunList({ onSelect }) {
+const POLL_MS = 5000;
+
+function issueLabel(run) {
+  return run.issue_text ?? run.issue_url;
+}
+
+export default function RunList({ onSelect, onNew }) {
   const [filter, setFilter] = useState("awaiting_approval");
   const [result, setResult] = useState({ key: null, runs: [], error: null });
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,13 +26,26 @@ export default function RunList({ onSelect }) {
     return () => {
       cancelled = true;
     };
-  }, [filter]);
+  }, [filter, tick]);
+
+  // refresh while a run is still in progress
+  const inProgress = result.runs.some((r) => r.status === "running" || r.status === "pending");
+  useEffect(() => {
+    if (!inProgress) return undefined;
+    const id = setInterval(() => setTick((t) => t + 1), POLL_MS);
+    return () => clearInterval(id);
+  }, [inProgress]);
 
   const loading = result.key !== filter;
   return (
     <section className="space-y-4" aria-live="polite" aria-busy={loading}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Runs</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Runs</h2>
+          <button className={`${btn} bg-forge-600 text-white hover:bg-forge-700`} onClick={onNew}>
+            <Plus className="size-4" aria-hidden="true" /> New run
+          </button>
+        </div>
         <label className="flex items-center gap-2 text-sm text-ink-500">
           Status
           <select
@@ -66,7 +86,7 @@ export default function RunList({ onSelect }) {
               <tbody className="divide-y divide-ink-200 dark:divide-white/10">
                 {result.runs.map((run) => (
                   <tr key={run.id} className="transition-colors hover:bg-ink-50 dark:hover:bg-white/5">
-                    <td className="max-w-xs truncate px-4 py-3 font-mono text-xs">{run.issue_url}</td>
+                    <td className="max-w-xs truncate px-4 py-3 text-xs" title={issueLabel(run)}>{issueLabel(run)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={run.status} />
                     </td>
@@ -91,7 +111,7 @@ export default function RunList({ onSelect }) {
                 className="space-y-3 rounded-xl border border-ink-200 bg-white p-4 transition-colors dark:border-white/10 dark:bg-ink-900"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 font-mono text-xs break-all">{run.issue_url}</p>
+                  <p className="min-w-0 text-xs break-words">{issueLabel(run)}</p>
                   <StatusBadge status={run.status} />
                 </div>
                 <p className="flex items-center gap-1.5 text-xs text-ink-500">

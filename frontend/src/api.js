@@ -44,3 +44,15 @@ export function rejectRun(id, reason) {
     body: JSON.stringify({ reason: reason || null }),
   });
 }
+
+export function listDemoRepos() {
+  return request("/agent/demo-repos");
+}
+
+export function createRun(issueText, repo) {
+  return request("/agent/runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ issue_text: issueText, repo }),
+  });
+}
