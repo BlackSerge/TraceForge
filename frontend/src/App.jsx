@@ -66,6 +66,7 @@ function Timeline({ steps }) {
         <li key={step.id} className={`step step-${step.outcome}`}>
           <div className="step-head">
             <strong>Step {step.step_id}</strong>
+            <span className={`badge badge-role-${step.agent_role}`}>{step.agent_role}</span>
             <span className={`badge badge-outcome-${step.outcome}`}>{step.outcome}</span>
             <span className="muted">
               {step.latency_ms ?? "?"} ms · {step.tokens_in ?? "?"}→{step.tokens_out ?? "?"} tokens · {step.model ?? "?"}
@@ -79,6 +80,14 @@ function Timeline({ steps }) {
       ))}
     </ol>
   );
+}
+
+function reviewVerdict(steps) {
+  const call = steps
+    .filter((s) => s.agent_role === "reviewer")
+    .flatMap((s) => s.tool_calls)
+    .find((c) => c.name === "submit_verdict" && c.result && c.result.recorded);
+  return call ? call.args : null;
 }
 
 function finalDiff(steps) {
@@ -191,6 +200,7 @@ function RunDetail({ runId, onBack }) {
   const loading = result.key !== key;
   const run = result.run;
   const patch = run ? finalDiff(run.steps) : null;
+  const verdict = run ? reviewVerdict(run.steps) : null;
 
   return (
     <section>
@@ -208,7 +218,16 @@ function RunDetail({ runId, onBack }) {
           <p className="muted">
             Run {run.id} · created {formatDate(run.created_at)} · finished {formatDate(run.finished_at)}
           </p>
-          {run.rejection_reason && <p className="reason">Reason for rejection: {run.rejection_reason}</p>}
+          {run.rejection_reason && (
+            <p className="reason">
+              {run.status === "failed" ? "Failure reason" : "Reason for rejection"}: {run.rejection_reason}
+            </p>
+          )}
+          {verdict && (
+            <p className={`reason review-${verdict.verdict}`}>
+              Reviewer verdict: <strong>{verdict.verdict.replace("_", " ")}</strong> — {verdict.reason}
+            </p>
+          )}
 
           {run.status === "awaiting_approval" && (
             <div className="actions">

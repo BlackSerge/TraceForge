@@ -90,3 +90,9 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .diff .add { background: var(--add-bg); }
 .diff .del { background: var(--del-bg); }
 .diff .hunk { color: var(--info); }
+
+.badge-role-triage { color: #7c5cbf; border-color: #7c5cbf; }
+.badge-role-developer, .badge-role-coder { color: #2f7fbf; border-color: #2f7fbf; }
+.badge-role-reviewer { color: #b8741a; border-color: #b8741a; }
+.review-changes_requested { color: var(--warn); }
+.review-approved { color: var(--ok); }
