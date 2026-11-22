@@ -18,7 +18,7 @@ class OpenAICompatClient(BaseLLMClient):
 
     def __init__(self) -> None:
         self._client = AsyncOpenAI(
-            api_key=settings.llm_api_key, base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key.get_secret_value(), base_url=settings.llm_base_url,
             max_retries=0, timeout=REQUEST_TIMEOUT_S,
         )
 

@@ -8,6 +8,27 @@ from pydantic import BaseModel, ConfigDict
 from src.models.trace import StepOutcome
 
 
+class TraceStepSummary(BaseModel):
+    """A step without input_context: the full LLM context grows with every step and is fetched on demand."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    run_id: uuid.UUID
+    step_id: int
+    timestamp: datetime
+    agent_role: str
+    tool_calls: list[dict[str, Any]]
+    reasoning_summary: str
+    outcome: StepOutcome
+    attempt: int
+    latency_ms: int | None
+    tokens_in: int | None
+    tokens_out: int | None
+    cost_usd: Decimal | None
+    model: str | None
+
+
 class TraceStepRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

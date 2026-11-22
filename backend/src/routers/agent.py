@@ -1,21 +1,28 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.session import get_session
 from src.models.run import AgentRun, RunStatus
+from src.models.trace import TraceStep
 from src.schemas.agent import AgentRunDetail, AgentRunSummary, RejectRequest
+from src.schemas.trace import TraceStepRead
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 @router.get("/runs", response_model=list[AgentRunSummary])
-async def list_runs(status: RunStatus | None = None, session: AsyncSession = Depends(get_session)):
-    query = select(AgentRun).order_by(AgentRun.created_at.desc())
+async def list_runs(
+    status: RunStatus | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(AgentRun).order_by(AgentRun.created_at.desc()).limit(limit).offset(offset)
     if status is not None:
         query = query.where(AgentRun.status == status)
     return (await session.execute(query)).scalars().all()
@@ -31,6 +38,17 @@ async def get_run(run_id: uuid.UUID, session: AsyncSession = Depends(get_session
     if run is None:
         raise HTTPException(status_code=404, detail="Run not found")
     return run
+
+
+@router.get("/runs/{run_id}/steps/{step_id}", response_model=TraceStepRead)
+async def get_step(run_id: uuid.UUID, step_id: int, session: AsyncSession = Depends(get_session)):
+    """Full step including input_context (omitted from the run detail to keep it small)."""
+    step = (
+        await session.execute(select(TraceStep).where(TraceStep.run_id == run_id, TraceStep.step_id == step_id))
+    ).scalar_one_or_none()
+    if step is None:
+        raise HTTPException(status_code=404, detail="Step not found")
+    return step
 
 
 async def _decide(

@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.run import RunStatus
-from src.schemas.trace import TraceStepRead
+from src.schemas.trace import TraceStepSummary
 
 
 class AgentRunSummary(BaseModel):
@@ -21,8 +21,8 @@ class AgentRunSummary(BaseModel):
 
 
 class AgentRunDetail(AgentRunSummary):
-    steps: list[TraceStepRead]
+    steps: list[TraceStepSummary]
 
 
 class RejectRequest(BaseModel):
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=2000)

@@ -1,3 +1,4 @@
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +9,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     llm_provider: str = "openai_compat"
-    llm_api_key: str  # required: no default, startup fails if missing
+    llm_api_key: SecretStr  # required: no default, startup fails if missing
     llm_base_url: str
     llm_model: str
 
