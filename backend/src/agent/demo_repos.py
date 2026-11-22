@@ -1,4 +1,5 @@
 """Demo repositories a user can run the agent on: the fixtures of the eval cases."""
+import functools
 import json
 import shutil
 import tempfile
@@ -11,7 +12,8 @@ from src.agent.tools import Workspace
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals"
 
 
-def list_demo_repos() -> list[dict]:
+@functools.cache
+def _load_demo_repos() -> tuple[dict, ...]:
     repos = []
     for path in sorted((EVALS_DIR / "cases").glob("*.json")):
         case = json.loads(path.read_text())
@@ -24,7 +26,11 @@ def list_demo_repos() -> list[dict]:
                 "test_file": case["test_file"],
             }
         )
-    return repos
+    return tuple(repos)
+
+
+def list_demo_repos() -> list[dict]:
+    return list(_load_demo_repos())
 
 
 def find_demo_repo(slug: str) -> dict | None:
