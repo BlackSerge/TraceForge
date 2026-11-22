@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Clock, Inbox, Plus } from "lucide-react";
-import { listRuns } from "../api";
+import { ChevronRight, Clock, Inbox, Plus, Trash2 } from "lucide-react";
+import { deleteRun, listRuns } from "../api";
 import { formatDate } from "../format";
 import { btn, btnGhost } from "../styles";
 import { EmptyState, ErrorBanner, ListSkeleton, StatusBadge } from "./ui";
@@ -8,6 +8,11 @@ import { EmptyState, ErrorBanner, ListSkeleton, StatusBadge } from "./ui";
 const STATUSES = ["awaiting_approval", "approved", "rejected", "failed", "running", "pending"];
 
 const POLL_MS = 5000;
+
+// the API refuses runs in progress and runs that belong to an eval run
+function canDelete(run) {
+  return run.status !== "running" && run.status !== "pending" && !run.eval_run_id;
+}
 
 function issueLabel(run) {
   return run.issue_text ?? run.issue_url;
@@ -17,6 +22,7 @@ export default function RunList({ onSelect, onNew }) {
   const [filter, setFilter] = useState("awaiting_approval");
   const [result, setResult] = useState({ key: null, runs: [], error: null });
   const [tick, setTick] = useState(0);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +43,17 @@ export default function RunList({ onSelect, onNew }) {
   }, [inProgress]);
 
   const loading = result.key !== filter;
+
+  async function remove(run) {
+    if (!window.confirm("Delete this run and its trace? This cannot be undone.")) return;
+    setDeleteError(null);
+    try {
+      await deleteRun(run.id);
+      setTick((t) => t + 1);
+    } catch (err) {
+      setDeleteError(err.message);
+    }
+  }
   return (
     <section className="space-y-4" aria-live="polite" aria-busy={loading}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -64,6 +81,7 @@ export default function RunList({ onSelect, onNew }) {
       </div>
 
       <ErrorBanner message={!loading && result.error} />
+      <ErrorBanner message={deleteError} />
       {loading && <ListSkeleton />}
       {!loading && !result.error && result.runs.length === 0 && (
         <EmptyState icon={Inbox}>No runs with this status.</EmptyState>
@@ -93,9 +111,16 @@ export default function RunList({ onSelect, onNew }) {
                     <td className="px-4 py-3 whitespace-nowrap text-ink-500">{formatDate(run.created_at)}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-ink-500">{formatDate(run.finished_at)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button className={btnGhost} onClick={() => onSelect(run.id)}>
-                        View details <ChevronRight className="size-4" aria-hidden="true" />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button className={btnGhost} onClick={() => onSelect(run.id)}>
+                          View details <ChevronRight className="size-4" aria-hidden="true" />
+                        </button>
+                        {canDelete(run) && (
+                          <button className={btnGhost} onClick={() => remove(run)} aria-label="Delete run" title="Delete run">
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -121,9 +146,16 @@ export default function RunList({ onSelect, onNew }) {
                     {formatDate(run.created_at)} → {formatDate(run.finished_at)}
                   </span>
                 </p>
-                <button className={`${btnGhost} w-full`} onClick={() => onSelect(run.id)}>
-                  View details <ChevronRight className="size-4" aria-hidden="true" />
-                </button>
+                <div className="flex gap-2">
+                  <button className={`${btnGhost} flex-1`} onClick={() => onSelect(run.id)}>
+                    View details <ChevronRight className="size-4" aria-hidden="true" />
+                  </button>
+                  {canDelete(run) && (
+                    <button className={btnGhost} onClick={() => remove(run)} aria-label="Delete run" title="Delete run">
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
