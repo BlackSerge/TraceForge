@@ -1,16 +1,14 @@
-# React + Vite
+# TraceForge frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Approval inbox for the DevPilot agent: list runs, inspect the multi-role timeline (triage / developer / reviewer), and approve or reject. Vite + React 19 (plain JS) + Tailwind CSS v4 + lucide-react.
 
-Currently, two official plugins are available:
+```bash
+pnpm install
+pnpm dev     # http://localhost:5173
+pnpm build
+pnpm lint
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The backend URL comes from `VITE_API_URL` (default `http://127.0.0.1:8000`). The backend CORS allows only `http://localhost:5173` and `http://127.0.0.1:5173`.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Layout: `src/App.jsx` (view state + layout), `src/components/` (RunList, RunDetail, Timeline, ui, ErrorBoundary), `src/styles.js` (design tokens), `src/format.js`, `src/api.js` (all HTTP calls).
