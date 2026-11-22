@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agent import tools
@@ -14,6 +15,7 @@ from src.agent.prompts import (
 )
 from src.agent.tools import Workspace, default_workspace
 from src.models.run import AgentRun, RunStatus
+from src.models.trace import TraceStep
 
 MAX_STEPS = 15
 
@@ -46,7 +48,14 @@ def _initial_message(ws: Workspace, issue_url: str, issue_text: str | None) -> s
     )
 
 
+async def _sum_cost(session: AsyncSession, run: AgentRun) -> None:
+    """run.total_cost_usd = sum of its steps' costs; stays None while every step cost is unknown."""
+    total = (await session.execute(select(func.sum(TraceStep.cost_usd)).where(TraceStep.run_id == run.id))).scalar()
+    run.total_cost_usd = total
+
+
 async def _fail(session: AsyncSession, run: AgentRun, reason: str | None = None) -> None:
+    await _sum_cost(session, run)
     run.status = RunStatus.FAILED
     run.rejection_reason = reason
     run.finished_at = datetime.now(timezone.utc)
@@ -77,6 +86,7 @@ async def run_agent(
         await _fail(session, run)
         return AgentResult(run.id, False, cycle.steps, error=cycle.error)
     if cycle.passed:
+        await _sum_cost(session, run)
         run.status = RunStatus.AWAITING_APPROVAL
         run.finished_at = datetime.now(timezone.utc)
         await session.commit()
@@ -202,6 +212,7 @@ async def run_multi_agent(
         return MultiAgentResult(run.id, run.status, steps, triage=triage.decision, error=review.error)
 
     # No reviewer verdict (or changes_requested): still awaiting_approval, the human decides.
+    await _sum_cost(session, run)
     run.status = RunStatus.AWAITING_APPROVAL
     run.finished_at = datetime.now(timezone.utc)
     await session.commit()

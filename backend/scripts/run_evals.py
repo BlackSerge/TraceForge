@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import select  # noqa: E402
 
+from src.agent.pricing import is_free_tier  # noqa: E402
 from src.agent import tools  # noqa: E402
 from src.agent.loop import run_agent  # noqa: E402
 from src.config import settings  # noqa: E402
@@ -120,6 +121,9 @@ async def run_case(session, eval_run: EvalRun, case: dict) -> dict:
         await session.flush()
         agent_run_id = placeholder.id
 
+    agent_run = await session.get(AgentRun, agent_run_id)
+    cost_usd = agent_run.total_cost_usd if agent_run else None
+
     session.add(
         EvalResult(
             eval_run_id=eval_run.id,
@@ -128,7 +132,7 @@ async def run_case(session, eval_run: EvalRun, case: dict) -> dict:
             passed=passed,
             steps=steps,
             latency_ms=latency_ms,
-            cost_usd=None,
+            cost_usd=cost_usd,
             failure_reason=failure_reason,
         )
     )
@@ -138,17 +142,24 @@ async def run_case(session, eval_run: EvalRun, case: dict) -> dict:
         "passed": passed,
         "steps": steps,
         "latency_ms": latency_ms,
-        "cost_usd": None,
+        "cost_usd": float(cost_usd) if cost_usd is not None else None,
         "failure_reason": failure_reason,
         "agent_run_id": str(agent_run_id),
     }
 
 
-def summarize(details: list[dict]) -> dict:
+def summarize(details: list[dict], model: str | None = None) -> dict:
     total = len(details)
     passed = sum(d["passed"] for d in details)
     latencies = [d["latency_ms"] for d in details]
     steps = [d["steps"] for d in details]
+    costs = [d["cost_usd"] for d in details if d["cost_usd"] is not None]
+    if not costs:
+        cost_basis = "unknown"
+    elif is_free_tier(model):
+        cost_basis = "free_tier"  # 0 is a billing fact, not a measure of how cheap the agent is
+    else:
+        cost_basis = "priced"
     return {
         "total_cases": total,
         "passed": passed,
@@ -157,7 +168,8 @@ def summarize(details: list[dict]) -> dict:
         "avg_steps": round(sum(steps) / total, 2) if total else None,
         "latency_ms_p50": round(percentile(latencies, 50)) if total else None,
         "latency_ms_p95": round(percentile(latencies, 95)) if total else None,
-        "cost_usd_per_task": None,  # cost is not computed yet
+        "cost_usd_per_task": round(sum(costs) / len(costs), 6) if costs else None,
+        "cost_basis": cost_basis,
     }
 
 
@@ -194,7 +206,7 @@ async def main() -> int:
                     await asyncio.sleep(args.sleep)
         finally:
             await session.rollback()  # the session may be in a failed state after an interrupt
-            summary = summarize(details)
+            summary = summarize(details, eval_run.model)
             eval_run.finished_at = datetime.now(timezone.utc)
             eval_run.summary = summary
             await session.commit()

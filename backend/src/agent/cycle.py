@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agent import tools
+from src.agent.pricing import cost_for
 from src.agent.tool_schemas import DECISION_TOOLS, READ_ONLY_TOOLS, ROLE_TOOLS, TOOLS_BY_NAME
 from src.agent.tools import Workspace
 from src.models.run import AgentRun
@@ -186,7 +187,7 @@ async def _run_cycle(
                 latency_ms=int((time.perf_counter() - started) * 1000),
                 tokens_in=reply["tokens_in"],
                 tokens_out=reply["tokens_out"],
-                cost_usd=None,
+                cost_usd=cost_for(reply["model"], reply["tokens_in"], reply["tokens_out"]),
                 model=reply["model"],
             )
         )

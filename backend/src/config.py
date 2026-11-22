@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     llm_base_url: str
     llm_model: str
 
+    # Optional price of the configured model (USD per 1M tokens); see src/agent/pricing.py
+    llm_price_input_per_mtok: float | None = None
+    llm_price_output_per_mtok: float | None = None
+
     eval_sleep_between_cases_s: float = 5.0
 
 
