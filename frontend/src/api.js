@@ -21,7 +21,7 @@ async function request(path, options) {
     }
     throw new Error(`${res.status}: ${detail}`);
   }
-  return res.json();
+  return res.status === 204 ? null : res.json();
 }
 
 export function listRuns(status) {
@@ -57,22 +57,6 @@ export function createRun(issueText, repo) {
   });
 }
 
-export async function deleteRun(id) {
-  // DELETE answers 204 with no body, which request() would try to parse as JSON
-  let res;
-  try {
-    res = await fetch(`${BASE_URL}/agent/runs/${id}`, { method: "DELETE", signal: AbortSignal.timeout(TIMEOUT_MS) });
-  } catch (err) {
-    throw new Error(`Could not connect to the backend (${BASE_URL})`, { cause: err });
-  }
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      if (typeof body.detail === "string") detail = body.detail;
-    } catch {
-      // body was not JSON: keep statusText
-    }
-    throw new Error(`${res.status}: ${detail}`);
-  }
+export function deleteRun(id) {
+  return request(`/agent/runs/${id}`, { method: "DELETE" });
 }
