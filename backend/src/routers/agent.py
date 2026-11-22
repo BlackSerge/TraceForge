@@ -68,6 +68,21 @@ async def get_run(run_id: uuid.UUID, session: AsyncSession = Depends(get_session
     return run
 
 
+@router.delete("/runs/{run_id}", status_code=204)
+async def delete_run(run_id: uuid.UUID, session: AsyncSession = Depends(get_session)):
+    """Delete a run and its trace steps. Refused while the agent is working on it, and for runs that
+    belong to an eval run (their results reference them)."""
+    run = await session.get(AgentRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.status in (RunStatus.PENDING, RunStatus.RUNNING):
+        raise HTTPException(status_code=409, detail="Run is in progress")
+    if run.eval_run_id is not None:
+        raise HTTPException(status_code=409, detail="Run belongs to an eval run")
+    await session.delete(run)
+    await session.commit()
+
+
 @router.get("/runs/{run_id}/steps/{step_id}", response_model=TraceStepRead)
 async def get_step(run_id: uuid.UUID, step_id: int, session: AsyncSession = Depends(get_session)):
     """Full step including input_context (omitted from the run detail to keep it small)."""
