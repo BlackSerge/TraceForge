@@ -7,7 +7,7 @@ DevPilot Agent (UI branded TraceForge) is a two-part app: a FastAPI backend (age
 - `backend/src/main.py` — FastAPI `app`, `/health`, CORS middleware, and the `agent`, `traces`, `evals` routers (`backend/src/routers/`).
 - `backend/src/agent/` — agent loop (`loop.py`), tools (`tools.py`), and the LLM abstraction (`llm/`).
 - `backend/src/{models,schemas,db}/`, `backend/migrations/` (Alembic), `backend/sandbox/` (Dockerfile for the test sandbox), `backend/scripts/` (runners).
-- `backend/tests/` — only `__init__.py` and `fixtures/repo/{sample.py,test_sample.py}`, the default fixture repo for the agent. No pytest suite for the backend itself.
+- `backend/tests/` — only `__init__.py` and `fixtures/repo/{sample.py,test_sample.py}`, the default fixture repo for the agent. Tool/guard unit tests live in `backend/tests/test_tools.py` (`make test`, no Docker or LLM needed).
 - `evals/` — `cases/` (16 JSON cases), `fixtures/case_XX/`, `reports/`. Run with `make eval`.
 - `frontend/` — Vite + React 19 in plain JavaScript/JSX (no TypeScript): the TraceForge approval inbox.
 
@@ -38,12 +38,12 @@ pnpm build
 pnpm lint     # eslint . (JS/JSX only)
 ```
 
-There is no frontend test script. The backend has no pytest suite of its own: pytest only runs inside the sandbox container against fixture repos (`run_tests`, `make eval`).
+There is no frontend test script. Backend unit tests: `make test`. Pytest also runs inside the sandbox container against fixture repos (`run_tests`, `make eval`). CI: `.github/workflows/ci.yml`.
 
 ## Gotchas
 
 - Backend dependencies are pinned in `backend/requirements.txt`; add new ones there. Config comes from `backend/.env` via pydantic-settings (never commit it, see Security).
-- CORS in `backend/src/main.py` allows only `http://localhost:5173` and `http://127.0.0.1:5173`. `frontend/src/api.js` hardcodes `http://127.0.0.1:8000`. Changing either port or origin requires updating both files.
+- CORS in `backend/src/main.py` allows only `http://localhost:5173` and `http://127.0.0.1:5173`. `frontend/src/api.js` reads `VITE_API_URL` (default `http://127.0.0.1:8000`). Changing the API port or the frontend origin requires updating both sides.
 - `backend/` is not a package (no `__init__.py`). Import as `src.*` when working from `backend/` (scripts need `PYTHONPATH=.`); prefer running from `backend/`.
 - The frontend has no env-based config; all HTTP calls live in `frontend/src/api.js`.
 - There is no root README, CI, formatter, or typechecker yet. The README is part of the Definition of Done v1.00 (written after hito 4).
@@ -84,8 +84,9 @@ There is no frontend test script. The backend has no pytest suite of its own: py
 - [ ] README final.
 
 ## Security
+- Postgres y Redis en `docker-compose.yml` solo escuchan en `127.0.0.1`. La API no tiene autenticación todavía: no la expongas fuera de localhost.
 - `backend/.env` está en `.gitignore` y nunca ha sido trackeado (auditado sobre todo el historial). Contiene `LLM_API_KEY`; no se commitea ni se imprime.
 - `CLAUDE.md` está en `.gitignore` (es para Claude Code, no para el repo).
 - El sandbox de `run_tests` corre con `--network=none`, `--read-only`, usuario no-root y timeout de 60 s (además de 512 MB, 1 CPU, `--cap-drop=ALL`, repo montado solo lectura).
-- `propose_patch` solo escribe dentro de la copia temporal del fixture (path traversal, rutas absolutas y symlinks fuera de la copia bloqueados).
+- `propose_patch` rechaza archivos de test (`test_*.py`, `*_test.py`, `conftest.py`) y solo escribe dentro de la copia temporal del fixture (path traversal, rutas absolutas y symlinks fuera de la copia bloqueados).
 - La auditoría de prompt injection registra `suspicious_issue` en el `input_context` del primer `TraceStep`, pero no bloquea: es auditoría, no filtro.
