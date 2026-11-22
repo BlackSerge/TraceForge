@@ -19,6 +19,7 @@ class AgentRunSummary(BaseModel):
     total_cost_usd: Decimal | None
     rejection_reason: str | None
     issue_text: str | None
+    eval_run_id: uuid.UUID | None
 
 
 class AgentRunDetail(AgentRunSummary):
