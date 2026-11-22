@@ -1,0 +1,35 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No hidden/obfuscated code (very long lines or tab runs in source files)
+        run: |
+          ! git ls-files '*.js' '*.jsx' '*.mjs' '*.py' '*.sh' | xargs awk 'length($0) > 300 || /\t\t\t\t\t\t\t\t/ {print FILENAME": line "FNR; bad=1} END {exit bad}'
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install -r backend/requirements.txt pip-audit
+      - run: cd backend && LLM_API_KEY=x LLM_BASE_URL=http://x LLM_MODEL=x python -m pytest -q
+      - run: pip-audit -r backend/requirements.txt
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm audit
