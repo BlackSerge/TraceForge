@@ -1,6 +1,6 @@
 {
   "slug": "divide-floors",
-  "description": "divide(a, b) usa division entera",
+  "description": "divide(a, b) uses integer division",
   "issue_text": "divide(7, 2) returns 3 instead of 3.5.",
   "fixture_dir": "case_03",
   "test_file": "test_calc.py",

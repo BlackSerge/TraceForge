@@ -1,6 +1,6 @@
 {
   "slug": "average-empty-list",
-  "description": "average([]) lanza ZeroDivisionError",
+  "description": "average([]) raises ZeroDivisionError",
   "issue_text": "average([]) crashes with ZeroDivisionError; it should return 0 for an empty list.",
   "fixture_dir": "case_14",
   "test_file": "test_stats.py",

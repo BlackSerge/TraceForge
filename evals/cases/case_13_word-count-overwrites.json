@@ -1,6 +1,6 @@
 {
   "slug": "word-count-overwrites",
-  "description": "word_count sobrescribe en vez de acumular",
+  "description": "word_count overwrites instead of accumulating",
   "issue_text": "word_count('a b a') reports 1 for 'a' instead of 2.",
   "fixture_dir": "case_13",
   "test_file": "test_words.py",

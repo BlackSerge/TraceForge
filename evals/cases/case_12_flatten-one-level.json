@@ -1,6 +1,6 @@
 {
   "slug": "flatten-one-level",
-  "description": "flatten solo aplana un nivel de anidacion",
+  "description": "flatten only flattens one level of nesting",
   "issue_text": "flatten([1, [2, [3, [4]]]]) does not fully flatten the list.",
   "fixture_dir": "case_12",
   "test_file": "test_lists.py",

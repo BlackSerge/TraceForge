@@ -1,6 +1,6 @@
 {
   "slug": "subtract-reversed",
-  "description": "subtract(a, b) invierte los operandos",
+  "description": "subtract(a, b) swaps the operands",
   "issue_text": "subtract(5, 3) returns -2 instead of 2.",
   "fixture_dir": "case_04",
   "test_file": "test_calc.py",

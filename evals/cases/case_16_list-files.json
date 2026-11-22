@@ -1,6 +1,6 @@
 {
   "slug": "list-files",
-  "description": "El bug esta en pricing.py, que el issue no nombra: el agente debe explorar con list_files",
+  "description": "the bug is in pricing.py, which the issue does not name: the agent must explore with list_files (multi-file)",
   "issue_text": "The total price calculation is wrong: checkout([(10, 2), (5, 1)]) should be 25.",
   "fixture_dir": "case_16",
   "test_file": "test_main.py",

@@ -1,6 +1,6 @@
 {
   "slug": "summarize-wrong-mean",
-  "description": "el bug esta en mathutils.mean, usado por report.summarize",
+  "description": "the bug is in mathutils.mean, used by report.summarize (multi-file)",
   "issue_text": "summarize([2, 4, 6]) in report.py reports a wrong mean.",
   "fixture_dir": "case_15",
   "test_file": "test_report.py",

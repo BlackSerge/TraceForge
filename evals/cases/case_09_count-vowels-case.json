@@ -1,6 +1,6 @@
 {
   "slug": "count-vowels-case",
-  "description": "count_vowels ignora las vocales mayusculas",
+  "description": "count_vowels ignores uppercase vowels",
   "issue_text": "count_vowels('Apple') returns 1 instead of 2.",
   "fixture_dir": "case_09",
   "test_file": "test_text.py",

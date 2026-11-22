@@ -1,6 +1,6 @@
 {
   "slug": "is-adult-off-by-one",
-  "description": "is_adult(18) devuelve False por usar > en vez de >=",
+  "description": "is_adult(18) returns False because it uses > instead of >=",
   "issue_text": "A person who is exactly 18 is not considered an adult.",
   "fixture_dir": "case_05",
   "test_file": "test_age.py",
