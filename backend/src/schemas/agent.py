@@ -18,6 +18,7 @@ class AgentRunSummary(BaseModel):
     finished_at: datetime | None
     total_cost_usd: Decimal | None
     rejection_reason: str | None
+    issue_text: str | None
 
 
 class AgentRunDetail(AgentRunSummary):
@@ -26,3 +27,14 @@ class AgentRunDetail(AgentRunSummary):
 
 class RejectRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=2000)
+
+
+class CreateRunRequest(BaseModel):
+    issue_text: str = Field(min_length=10, max_length=4000)
+    repo: str = Field(min_length=1, max_length=100, description="slug of a demo repo (GET /agent/demo-repos)")
+
+
+class DemoRepo(BaseModel):
+    slug: str
+    description: str
+    example_issue: str

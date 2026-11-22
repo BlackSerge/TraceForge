@@ -9,10 +9,38 @@ from sqlalchemy.orm import selectinload
 from src.db.session import get_session
 from src.models.run import AgentRun, RunStatus
 from src.models.trace import TraceStep
-from src.schemas.agent import AgentRunDetail, AgentRunSummary, RejectRequest
+from src.agent import executor
+from src.agent.demo_repos import find_demo_repo, list_demo_repos
+from src.schemas.agent import (
+    AgentRunDetail, AgentRunSummary, CreateRunRequest, DemoRepo, RejectRequest,
+)
 from src.schemas.trace import TraceStepRead
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+
+
+@router.get("/demo-repos", response_model=list[DemoRepo])
+async def demo_repos():
+    return [DemoRepo(**{k: r[k] for k in ("slug", "description", "example_issue")}) for r in list_demo_repos()]
+
+
+@router.post("/runs", response_model=AgentRunSummary, status_code=202)
+async def create_run(body: CreateRunRequest, session: AsyncSession = Depends(get_session)):
+    """Start a Triage -> Developer -> Reviewer run in the background; poll GET /agent/runs/{id}."""
+    repo = find_demo_repo(body.repo)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="Unknown demo repo")
+    if not await executor.try_reserve():
+        raise HTTPException(status_code=429, detail="A run is already in progress")
+    try:
+        run = AgentRun(issue_url=f"manual://{repo['slug']}", status=RunStatus.PENDING, issue_text=body.issue_text)
+        session.add(run)
+        await session.commit()
+    except Exception:
+        executor.release()
+        raise
+    executor.start(run.id, body.issue_text, repo)
+    return run
 
 
 @router.get("/runs", response_model=list[AgentRunSummary])

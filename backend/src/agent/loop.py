@@ -72,7 +72,9 @@ async def run_agent(
 ) -> AgentResult:
     """Legacy single-role agent (role "coder"). Used by `make eval`."""
     ws = workspace or default_workspace()
-    run = AgentRun(issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id)
+    run = AgentRun(
+        issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id, issue_text=issue_text
+    )
     session.add(run)
     await session.commit()
 
@@ -146,6 +148,7 @@ async def run_multi_agent(
     issue_text: str | None = None,
     eval_run_id: uuid.UUID | None = None,
     workspace: Workspace | None = None,
+    run_id: uuid.UUID | None = None,
 ) -> MultiAgentResult:
     """Sequential Triage -> Developer -> Reviewer. No Developer<->Reviewer loop: if the reviewer
     requests changes the run still waits for approval and the human decides.
@@ -155,8 +158,13 @@ async def run_multi_agent(
     verdict lives in its TraceStep (submit_verdict tool call), no extra column.
     """
     ws = workspace or default_workspace()
-    run = AgentRun(issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id)
-    session.add(run)
+    if run_id is not None:  # the API created the row (status pending) before launching the task
+        run = await session.get(AgentRun, run_id)
+        run.status = RunStatus.RUNNING
+    else:
+        run = AgentRun(issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id)
+        session.add(run)
+    run.issue_text = issue_text
     await session.commit()
     client = get_llm_client()
     text = issue_text or DEFAULT_ISSUE_TEXT
