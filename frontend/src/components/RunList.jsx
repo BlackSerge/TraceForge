@@ -9,9 +9,27 @@ const STATUSES = ["awaiting_approval", "approved", "rejected", "failed", "runnin
 
 const POLL_MS = 5000;
 
-// the API refuses runs in progress and runs that belong to an eval run
-function canDelete(run) {
-  return run.status !== "running" && run.status !== "pending" && !run.eval_run_id;
+// Why a run cannot be deleted (the API refuses these), or null when it can.
+function deleteBlockedReason(run) {
+  if (run.status === "running" || run.status === "pending") return "Cannot delete a run in progress";
+  if (run.eval_run_id) return "Part of an eval run: cannot be deleted";
+  return null;
+}
+
+// Always rendered, so every row keeps the same layout; disabled (with the reason) when not allowed.
+function DeleteButton({ run, onDelete }) {
+  const blocked = deleteBlockedReason(run);
+  return (
+    <button
+      className={`${btnGhost} shrink-0`}
+      onClick={() => onDelete(run)}
+      disabled={blocked !== null}
+      aria-label="Delete run"
+      title={blocked ?? "Delete run"}
+    >
+      <Trash2 className="size-4" aria-hidden="true" />
+    </button>
+  );
 }
 
 function issueLabel(run) {
@@ -90,36 +108,32 @@ export default function RunList({ onSelect, onNew }) {
       {!loading && result.runs.length > 0 && (
         <>
           {/* desktop: table */}
-          <div className="hidden overflow-hidden rounded-xl border border-ink-200 bg-white md:block dark:border-white/10 dark:bg-ink-900">
+          <div className="hidden overflow-x-auto rounded-xl border border-ink-200 bg-white md:block dark:border-white/10 dark:bg-ink-900">
             <table className="w-full text-left text-sm">
               <thead className="bg-ink-50 text-xs tracking-wide text-ink-500 uppercase dark:bg-white/5">
                 <tr>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Issue</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Status</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Created</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Finished</th>
-                  <th scope="col" className="px-4 py-2.5"><span className="sr-only">Actions</span></th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Issue</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Status</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Created</th>
+                  <th scope="col" className="hidden px-3 py-2.5 font-medium lg:table-cell">Finished</th>
+                  <th scope="col" className="px-3 py-2.5"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink-200 dark:divide-white/10">
                 {result.runs.map((run) => (
                   <tr key={run.id} className="transition-colors hover:bg-ink-50 dark:hover:bg-white/5">
-                    <td className="max-w-xs truncate px-4 py-3 text-xs" title={issueLabel(run)}>{issueLabel(run)}</td>
-                    <td className="px-4 py-3">
+                    <td className="w-full max-w-0 truncate px-3 py-3 text-xs" title={issueLabel(run)}>{issueLabel(run)}</td>
+                    <td className="px-3 py-3">
                       <StatusBadge status={run.status} />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-ink-500">{formatDate(run.created_at)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-ink-500">{formatDate(run.finished_at)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-3 whitespace-nowrap text-ink-500">{formatDate(run.created_at)}</td>
+                    <td className="hidden px-3 py-3 whitespace-nowrap text-ink-500 lg:table-cell">{formatDate(run.finished_at)}</td>
+                    <td className="w-px px-3 py-3 text-right whitespace-nowrap">
                       <div className="flex justify-end gap-2">
-                        <button className={btnGhost} onClick={() => onSelect(run.id)}>
+                        <button className={`${btnGhost} whitespace-nowrap`} onClick={() => onSelect(run.id)}>
                           View details <ChevronRight className="size-4" aria-hidden="true" />
                         </button>
-                        {canDelete(run) && (
-                          <button className={btnGhost} onClick={() => remove(run)} aria-label="Delete run" title="Delete run">
-                            <Trash2 className="size-4" aria-hidden="true" />
-                          </button>
-                        )}
+                        <DeleteButton run={run} onDelete={remove} />
                       </div>
                     </td>
                   </tr>
@@ -150,11 +164,7 @@ export default function RunList({ onSelect, onNew }) {
                   <button className={`${btnGhost} flex-1`} onClick={() => onSelect(run.id)}>
                     View details <ChevronRight className="size-4" aria-hidden="true" />
                   </button>
-                  {canDelete(run) && (
-                    <button className={btnGhost} onClick={() => remove(run)} aria-label="Delete run" title="Delete run">
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </button>
-                  )}
+                  <DeleteButton run={run} onDelete={remove} />
                 </div>
               </li>
             ))}
