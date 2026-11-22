@@ -26,13 +26,13 @@ async def run_case(slug: str) -> None:
     with tempfile.TemporaryDirectory(prefix="devpilot_multi_") as tmp:
         repo = Path(tmp) / "repo"
         shutil.copytree(EVALS / "fixtures" / case["fixture_dir"], repo)
-        tools.FIXTURE_REPO, tools.TEST_FILE = repo, case["test_file"]
+        ws = tools.Workspace(root=repo, test_file=case["test_file"])
         async with SessionLocal() as session:
-            res = await run_multi_agent(f"https://example.com/issues/{slug}", session, issue_text=case["issue_text"])
+            res = await run_multi_agent(f"https://example.com/issues/{slug}", session, issue_text=case["issue_text"], workspace=ws)
             steps = (await session.execute(
                 select(TraceStep).where(TraceStep.run_id == res.run_id).order_by(TraceStep.step_id)
             )).scalars().all()
-        check = await tools.run_tests()
+        check = await tools.run_tests(ws)
     print(f"\n=== {slug}  run={res.run_id}")
     for s in steps:
         calls = ", ".join(

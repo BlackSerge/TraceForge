@@ -1,22 +1,42 @@
 import asyncio
 import difflib
+import fnmatch
 import os
 import tempfile
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
-# Module-level settings: the eval runner reassigns these per case.
-FIXTURE_REPO = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "repo"
-TEST_FILE = "test_sample.py"
+DEFAULT_REPO = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "repo"
 MAX_OUTPUT_CHARS = 4000
+MAX_READ_BYTES = 100_000
 TEST_TIMEOUT_S = 60
 SANDBOX_IMAGE = "devpilot-sandbox:latest"  # built from backend/sandbox/Dockerfile (make sandbox-image)
-LAST_SANDBOX: dict | None = None  # metadata of the last run_tests container
+TEST_FILE_PATTERNS = ("test_*.py", "*_test.py", "conftest.py")
 
 
-def list_repo_files() -> list[str]:
-    """Relative paths of the files in FIXTURE_REPO (not an agent tool: used to build the prompt)."""
-    root = FIXTURE_REPO.resolve()
+@dataclass
+class Workspace:
+    """Per-run working copy of a repo. Passed explicitly to every tool (no module globals), so
+    concurrent runs cannot clobber each other.
+
+    Flow: the caller (eval runner / script) copies the fixture to a temp dir and builds a
+    Workspace on it; propose_patch edits that copy; run_tests mounts that same copy read-only
+    in the sandbox container. The host never executes the repo's code.
+    """
+
+    root: Path
+    test_file: str = "test_sample.py"
+    last_sandbox: dict | None = None  # metadata of the last run_tests container
+
+
+def default_workspace() -> Workspace:
+    return Workspace(root=DEFAULT_REPO)
+
+
+def list_repo_files(ws: Workspace) -> list[str]:
+    """Relative paths of the files in the workspace (not an agent tool: used to build prompts)."""
+    root = ws.root.resolve()
     return sorted(
         str(p.relative_to(root))
         for p in root.rglob("*")
@@ -24,16 +44,26 @@ def list_repo_files() -> list[str]:
     )
 
 
-async def read_file(path: str) -> dict:
-    target = (FIXTURE_REPO / path).resolve()
-    if not target.is_relative_to(FIXTURE_REPO.resolve()) or not target.is_file():
+def _is_test_file(path: Path) -> bool:
+    return any(fnmatch.fnmatch(path.name, pat) for pat in TEST_FILE_PATTERNS)
+
+
+async def read_file(ws: Workspace, path: str) -> dict:
+    root = ws.root.resolve()
+    target = (root / path).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
         return {"error": "not found"}
-    return {"path": path, "content": target.read_text()}
+    if target.stat().st_size > MAX_READ_BYTES:
+        return {"error": f"file too large (max {MAX_READ_BYTES} bytes)"}
+    try:
+        return {"path": path, "content": target.read_text()}
+    except UnicodeDecodeError:
+        return {"error": "not a text file"}
 
 
-async def list_files(path: str = ".") -> dict:
-    """List a directory inside FIXTURE_REPO: directories first, then files, alphabetically."""
-    root = FIXTURE_REPO.resolve()
+async def list_files(ws: Workspace, path: str = ".") -> dict:
+    """List a directory inside the workspace: directories first, then files, alphabetically."""
+    root = ws.root.resolve()
     target = (root / path).resolve()
     if not target.is_relative_to(root) or not target.is_dir():
         return {"error": "not found"}
@@ -45,17 +75,19 @@ async def list_files(path: str = ".") -> dict:
     }
 
 
-async def propose_patch(file: str, new_content: str) -> dict:
+async def propose_patch(ws: Workspace, file: str, new_content: str) -> dict:
     """Write new_content to the file and return the unified diff.
 
-    FIXTURE_REPO must be a temporary copy of the fixture (the runner guarantees it); the
-    resolved target must stay strictly inside it (blocks "..", absolute paths and symlinks
-    that point outside), and must not be a directory.
+    The resolved target must stay strictly inside the workspace (blocks "..", absolute paths and
+    symlinks pointing outside), must not be a directory, and must not be a test file: otherwise
+    the agent could "fix" the failing test by editing it instead of the code.
     """
-    root = FIXTURE_REPO.resolve()
+    root = ws.root.resolve()
     target = (root / file).resolve()
     if not target.is_relative_to(root) or target == root or target.is_dir():
         return {"error": "path outside repository"}
+    if _is_test_file(target) or target == (root / ws.test_file).resolve():
+        return {"error": "test files are read-only"}
     old_content = target.read_text() if target.is_file() else ""
     diff = "".join(
         difflib.unified_diff(
@@ -70,18 +102,14 @@ async def propose_patch(file: str, new_content: str) -> dict:
     return {"file": file, "diff": diff}
 
 
-async def run_tests() -> dict:
-    """Run pytest on TEST_FILE inside an ephemeral, network-less Docker container.
+async def run_tests(ws: Workspace) -> dict:
+    """Run pytest on ws.test_file inside an ephemeral, network-less Docker container.
 
-    Flow: the eval runner (or any caller) copies the fixture to a temp dir and points
-    FIXTURE_REPO at it; propose_patch edits that copy; this function mounts that same copy
-    read-only in the container. The host never executes the repo's code.
-    Contract: {"passed": bool, "output": str}. Container metadata goes to LAST_SANDBOX
+    Contract: {"passed": bool, "output": str}. Container metadata goes to ws.last_sandbox
     (the loop records it in the trace), not in the returned dict.
     """
-    global LAST_SANDBOX
     name = f"devpilot-sandbox-{uuid.uuid4().hex[:12]}"
-    LAST_SANDBOX = {"container_name": name, "image": SANDBOX_IMAGE, "container_id": None, "exit_code": None}
+    ws.last_sandbox = {"container_name": name, "image": SANDBOX_IMAGE, "container_id": None, "exit_code": None}
     uid, gid = os.getuid(), os.getgid()
     with tempfile.TemporaryDirectory(prefix="devpilot_cid_") as cid_dir:
         cidfile = Path(cid_dir) / "cid"
@@ -92,10 +120,10 @@ async def run_tests() -> dict:
             "--cap-drop=ALL", "--security-opt", "no-new-privileges",
             "--read-only", "--tmpfs", "/tmp:rw,size=64m",
             "-e", "PYTHONDONTWRITEBYTECODE=1",
-            "-v", f"{FIXTURE_REPO.resolve()}:/repo:ro,z",
+            "-v", f"{ws.root.resolve()}:/repo:ro,z",
             "-w", "/repo",
             SANDBOX_IMAGE,
-            "python", "-m", "pytest", TEST_FILE, "-q", "-p", "no:cacheprovider",
+            "python", "-m", "pytest", ws.test_file, "-q", "-p", "no:cacheprovider",
         ]
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -114,9 +142,9 @@ async def run_tests() -> dict:
             await proc.wait()
             return {"passed": False, "output": "timeout"}
         if cidfile.exists():
-            LAST_SANDBOX["container_id"] = cidfile.read_text().strip()[:12]
+            ws.last_sandbox["container_id"] = cidfile.read_text().strip()[:12]
     output = stdout.decode(errors="replace")
-    LAST_SANDBOX["exit_code"] = proc.returncode
+    ws.last_sandbox["exit_code"] = proc.returncode
     if proc.returncode in (125, 126, 127):  # docker itself failed (daemon down, image missing, ...)
         return {"passed": False, "output": f"sandbox unavailable: {output.strip()[-500:]}"}
     if len(output) > MAX_OUTPUT_CHARS:

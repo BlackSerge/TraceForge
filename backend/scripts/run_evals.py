@@ -86,14 +86,14 @@ async def run_case(session, eval_run: EvalRun, case: dict) -> dict:
     with tempfile.TemporaryDirectory(prefix="devpilot_eval_") as tmp:
         workdir = Path(tmp) / "repo"
         shutil.copytree(fixture, workdir)
-        tools.FIXTURE_REPO = workdir
-        tools.TEST_FILE = case["test_file"]
+        ws = tools.Workspace(root=workdir, test_file=case["test_file"])
         try:
             result = await run_agent(
                 case_row.issue_url,
                 session,
                 issue_text=case["issue_text"],
                 eval_run_id=eval_run.id,
+                workspace=ws,
             )
             agent_run_id, steps = result.run_id, result.steps
             if result.error:
@@ -102,7 +102,7 @@ async def run_case(session, eval_run: EvalRun, case: dict) -> dict:
             await session.rollback()
             failure_reason = f"runner error: {type(exc).__name__}: {exc}"
         # independent check: do not trust the agent's own trace
-        check = await tools.run_tests()
+        check = await tools.run_tests(ws)
         final_passed = bool(check["passed"])
         final_output = check["output"]
 
@@ -175,7 +175,6 @@ async def main() -> int:
         print("no matching cases found in evals/cases/")
         return 1
 
-    original = (tools.FIXTURE_REPO, tools.TEST_FILE)
     async with SessionLocal() as session:
         eval_run = EvalRun(git_sha=git_sha(), model=settings.llm_model)
         session.add(eval_run)
@@ -194,7 +193,6 @@ async def main() -> int:
                 if i < len(cases) - 1 and args.sleep > 0:
                     await asyncio.sleep(args.sleep)
         finally:
-            tools.FIXTURE_REPO, tools.TEST_FILE = original
             await session.rollback()  # the session may be in a failed state after an interrupt
             summary = summarize(details)
             eval_run.finished_at = datetime.now(timezone.utc)
