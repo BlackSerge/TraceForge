@@ -4,6 +4,10 @@ on:
   pull_request:
   workflow_dispatch:  # adds a "Run workflow" button in the Actions tab
 
+# Least privilege: the jobs only read the repository and use no secrets.
+permissions:
+  contents: read
+
 jobs:
   hygiene:
     runs-on: ubuntu-latest
