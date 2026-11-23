@@ -11,9 +11,9 @@ from src.agent import tools
 from src.agent.cycle import MAX_TEST_RUNS, _run_cycle
 from src.agent.llm.factory import get_llm_client
 from src.agent.prompts import (
-    DEFAULT_ISSUE_TEXT, DEVELOPER_PROMPT, REVIEWER_PROMPT, SYSTEM_PROMPT, TASK_TEMPLATE, TRIAGE_PROMPT,
+    DEVELOPER_PROMPT, REVIEWER_PROMPT, SYSTEM_PROMPT, TASK_TEMPLATE, TRIAGE_PROMPT,
 )
-from src.agent.tools import Workspace, default_workspace
+from src.agent.tools import Workspace
 from src.models.run import AgentRun, RunStatus
 from src.models.trace import TraceStep
 
@@ -40,10 +40,10 @@ class AgentResult:
 
 
 
-def _initial_message(ws: Workspace, issue_url: str, issue_text: str | None) -> str:
+def _initial_message(ws: Workspace, issue_url: str, issue_text: str) -> str:
     return TASK_TEMPLATE.format(
         issue_url=issue_url,
-        issue_text=issue_text or DEFAULT_ISSUE_TEXT,
+        issue_text=issue_text,
         files="\n".join(f"- {f}" for f in tools.list_repo_files(ws)),
     )
 
@@ -66,12 +66,12 @@ async def run_agent(
     issue_url: str,
     session: AsyncSession,
     *,
-    issue_text: str | None = None,
+    issue_text: str,
+    workspace: Workspace,
     eval_run_id: uuid.UUID | None = None,
-    workspace: Workspace | None = None,
 ) -> AgentResult:
     """Legacy single-role agent (role "coder"). Used by `make eval`."""
-    ws = workspace or default_workspace()
+    ws = workspace  # always a temporary copy: propose_patch writes into it
     run = AgentRun(
         issue_url=issue_url, status=RunStatus.RUNNING, eval_run_id=eval_run_id, issue_text=issue_text
     )
@@ -82,7 +82,7 @@ async def run_agent(
         session, run, get_llm_client(), ws,
         role="coder", system_prompt=SYSTEM_PROMPT, user_content=_initial_message(ws, issue_url, issue_text),
         step_base=0, max_steps=MAX_STEPS, max_test_runs=MAX_TEST_RUNS, stop_on_pass=True,
-        read_only_first_step=True, suspicious=scan_issue(issue_text or DEFAULT_ISSUE_TEXT),
+        read_only_first_step=True, suspicious=scan_issue(issue_text),
     )
     if cycle.error:
         await _fail(session, run)
@@ -145,9 +145,9 @@ async def run_multi_agent(
     issue_url: str,
     session: AsyncSession,
     *,
-    issue_text: str | None = None,
+    issue_text: str,
+    workspace: Workspace,
     eval_run_id: uuid.UUID | None = None,
-    workspace: Workspace | None = None,
     run_id: uuid.UUID | None = None,
 ) -> MultiAgentResult:
     """Sequential Triage -> Developer -> Reviewer. No Developer<->Reviewer loop: if the reviewer
@@ -157,7 +157,7 @@ async def run_multi_agent(
     does not make the tests pass, or on an LLM error; awaiting_approval otherwise. The reviewer's
     verdict lives in its TraceStep (submit_verdict tool call), no extra column.
     """
-    ws = workspace or default_workspace()
+    ws = workspace  # always a temporary copy: propose_patch writes into it
     if run_id is not None:  # the API created the row (status pending) before launching the task
         run = await session.get(AgentRun, run_id)
         run.status = RunStatus.RUNNING
@@ -167,9 +167,8 @@ async def run_multi_agent(
     run.issue_text = issue_text
     await session.commit()
     client = get_llm_client()
-    text = issue_text or DEFAULT_ISSUE_TEXT
     task = _initial_message(ws, issue_url, issue_text)
-    suspicious = scan_issue(text)
+    suspicious = scan_issue(issue_text)
     steps = 0
 
     triage = await _run_cycle(

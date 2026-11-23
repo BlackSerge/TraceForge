@@ -7,7 +7,6 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_REPO = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "repo"
 MAX_OUTPUT_CHARS = 4000
 MAX_READ_BYTES = 100_000
 TEST_TIMEOUT_S = 60
@@ -26,12 +25,8 @@ class Workspace:
     """
 
     root: Path
-    test_file: str = "test_sample.py"
+    test_file: str = "test_main.py"
     last_sandbox: dict | None = None  # metadata of the last run_tests container
-
-
-def default_workspace() -> Workspace:
-    return Workspace(root=DEFAULT_REPO)
 
 
 def list_repo_files(ws: Workspace) -> list[str]:

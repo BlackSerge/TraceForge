@@ -13,8 +13,7 @@ SYSTEM_PROMPT = (
     "Stop calling tools once the tests pass."
 )
 
-# Issue fetching is not implemented yet: the issue text is passed in (or defaulted).
-DEFAULT_ISSUE_TEXT = "the function add(a, b) in sample.py returns the wrong result. Fix it."
+# Issue fetching is not implemented yet: the issue text is always passed in.
 TASK_TEMPLATE = "Issue: {issue_url}\nDescription: {issue_text}\nRepository files:\n{files}"
 
 
