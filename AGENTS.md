@@ -36,7 +36,7 @@ Known limitation: with Gemini Flash Lite the Reviewer approves almost everything
 - `backend/src/main.py` — FastAPI `app`, `/health`, CORS middleware, startup reaper for orphaned runs, and the `agent`, `traces`, `evals` routers (`backend/src/routers/`).
 - `backend/src/agent/` — orchestration (`loop.py`: single-role `run_agent` for evals, multi-role `run_multi_agent`), one role's LLM cycle (`cycle.py`), prompts, tool schemas and per-role permissions (`tool_schemas.py`), tools on a per-run `Workspace` (`tools.py`), cost (`pricing.py`), background launcher with a single run slot (`executor.py`), demo repositories (`demo_repos.py`), and the LLM abstraction (`llm/`).
 - `backend/src/{models,schemas,db}/`, `backend/migrations/` (Alembic), `backend/sandbox/` (Dockerfile of the test sandbox), `backend/scripts/` (runners).
-- `backend/tests/` — unit tests (`make test`, 29 tests, no Docker or LLM needed) and `fixtures/repo/`, the default fixture repository.
+- `backend/tests/` — unit tests (`make test`, 28 tests, no Docker or LLM needed).
 - `evals/` — `cases/` (16 JSON cases), `fixtures/case_XX/`, `reports/`. Run with `make eval`. The fixtures are also the demo repositories offered by the UI.
 - `frontend/` — Vite + React 19 in plain JavaScript/JSX (no TypeScript), Tailwind CSS v4, lucide-react: the TraceForge approval inbox.
 
@@ -72,12 +72,13 @@ There is no frontend test script. Pytest also runs inside the sandbox container 
 
 ## Gotchas
 
-- Backend dependencies are pinned in `backend/requirements.txt`; add new ones there. Config comes from `backend/.env` via pydantic-settings (never commit it, see Security).
+- Backend dependencies are pinned in `backend/requirements.txt`; add new ones there. Config comes from `backend/.env` via pydantic-settings (template: `backend/.env.example`; never commit `.env`, see Security).
 - CORS in `backend/src/main.py` allows only `http://localhost:5173` and `http://127.0.0.1:5173`. `frontend/src/api.js` reads `VITE_API_URL` (default `http://127.0.0.1:8000`). Changing the API port or the frontend origin requires updating both sides.
 - `backend/` is not a package (no `__init__.py`). Import as `src.*` when working from `backend/` (scripts need `PYTHONPATH=.`); prefer running from `backend/`.
 - All HTTP calls of the frontend live in `frontend/src/api.js`.
 - Runs are created from the UI (`POST /agent/runs`, one at a time) on demo repositories taken from `evals/fixtures/`. Cloning a GitHub issue or repository is not implemented. Runs that belong to an eval run cannot be deleted from the UI.
 - Costs: `LLM_PRICE_INPUT_PER_MTOK` / `LLM_PRICE_OUTPUT_PER_MTOK` set the price. `gemini-3.1-flash-lite` is treated as free tier (cost 0, `cost_basis: free_tier` in eval reports); any other model without prices has cost `None`.
+- `run_agent` / `run_multi_agent` need an explicit `Workspace` (a temporary copy of a repository): `propose_patch` writes into it, so never point it at a tracked directory.
 - There is no formatter or typechecker.
 - Git history follows Conventional Commits with `backend`/`frontend` scopes, e.g. `feat(frontend): ...`.
 
