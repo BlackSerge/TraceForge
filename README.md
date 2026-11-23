@@ -65,7 +65,17 @@ All runs use `gemini-3.1-flash-lite`. Reports are in `evals/reports/`.
 | v3 | Multi-role, smoke test | 2 | working | n/a | n/a | n/a |
 
 - v1's single failure was a network timeout with no client-side limit. It was fixed with a 60 s request timeout and retries with backoff.
-- v3 was run on `add-subtracts` and `list-files` only: Triage, Developer and Reviewer ran and both runs reached `awaiting_approval`. The full 16-case eval was not run with three roles. The Reviewer approved every patch it saw.
+- v3 is a smoke test, not an evaluation. It ran `add-subtracts` and `list-files`: Triage, Developer and Reviewer ran and both runs reached `awaiting_approval`. The full 16-case eval was not run with three roles, and the reason is the model, not the design (see below).
+
+### Limits of these results
+
+All results come from `gemini-3.1-flash-lite` on a free tier, which is a weak model with a small token quota. That shapes what could be tested:
+
+- **Multi-role was not evaluated at scale.** A multi-role run makes 14 to 16 LLM calls, against about 6 for the single-role agent, and each call carries the growing conversation. Running the 16 cases through the three roles uses up the free quota, so only two cases were run. The sensible next step is to repeat the full eval with a paid model, where a complete run is affordable.
+- **The Reviewer was never put under pressure.** In every run it approved the patch. With a model this weak that says little about the Reviewer role itself: the prompt asks for scrutiny, but the model is too lenient to use it, and no eval yet feeds it a bad patch. Do not read "the Reviewer approved" as evidence that the review step works; it is evidence that the pipeline runs end to end.
+- **Other behaviors were only partly exercised** for the same reason: retries after failed tests, `not_viable` triage verdicts and prompt-injection cases were checked with a handful of real runs and ad-hoc checks against a simulated LLM (not kept as tests), not with a statistically meaningful sample.
+- **Reading the numbers.** The 100% in v2 is on 16 small, single-bug fixtures. It shows the harness and the agent work together; it does not predict success on real repositories.
+
 - **Cost.** `cost_usd` is computed per step from token usage and summed per run. `gemini-3.1-flash-lite` is treated as a free-tier model, so its cost is `0`, and reports mark it with `cost_basis: free_tier`: that zero is a billing fact, not a measure of how cheap the agent is. Set `LLM_PRICE_INPUT_PER_MTOK` and `LLM_PRICE_OUTPUT_PER_MTOK` to get real costs with a paid model; a model without a known price reports `null`. The reports above predate this and show `null`.
 
 ## Quick start
